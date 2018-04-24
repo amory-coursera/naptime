@@ -10,7 +10,8 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= Seq(
   "io.grpc" % "grpc-netty" % scalapb.compiler.Version.grpcJavaVersion,
-  "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion
+  "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+  "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
 )
 
 sourceDirectories in (Compile, TwirlKeys.compileTemplates) := (unmanagedSourceDirectories in Compile).value

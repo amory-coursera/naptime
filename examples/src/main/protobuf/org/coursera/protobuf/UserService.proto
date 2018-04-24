@@ -1,0 +1,32 @@
+syntax = "proto2";
+
+package org.coursera.protobuf;
+
+service UserService {
+    rpc findUsers (FindUsersRequest) returns (KeyedUsers);
+    rpc createUser (User) returns (UserId);
+}
+
+message UserId {
+    required int32 user_id = 1;
+}
+
+message User {
+    required string name = 2;
+    required string email = 3;
+    optional string selfDescription = 4;
+}
+
+message KeyedUser {
+    required UserId id = 1;
+    required User user = 2;
+}
+
+message KeyedUsers {
+    repeated KeyedUser users = 1;
+}
+
+message FindUsersRequest {
+    repeated UserId userIds = 1;
+    repeated string emails = 2;
+}

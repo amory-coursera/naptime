@@ -1,16 +1,18 @@
 package resources
 
-import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
 import akka.stream.Materializer
+import conversions.UserConversions
 import org.coursera.naptime.model.KeyFormat
 import org.coursera.naptime.model.Keyed
 import org.coursera.naptime.Ok
 import org.coursera.example.User
 import org.coursera.naptime.courier.CourierFormats
 import org.coursera.naptime.resources.TopLevelCollectionResource
+import org.coursera.protobuf.UserService
+import org.coursera.protobuf.UserService.UserServiceGrpc.UserServiceStub
 import play.api.libs.json.OFormat
 
 import scala.concurrent.ExecutionContext
@@ -49,8 +51,7 @@ import scala.concurrent.ExecutionContext
  */
 @Singleton
 class UsersResource @Inject() (
-    userStore: UserStore,
-    banManager: UserBanManager)
+    userClient: UserServiceStub)
     (implicit override val executionContext: ExecutionContext,
     override val materializer: Materializer)
   extends TopLevelCollectionResource[Int, User] {
@@ -63,61 +64,40 @@ class UsersResource @Inject() (
   override def keyFormat: KeyFormat[KeyType] = KeyFormat.intKeyFormat
   override implicit def resourceFormat: OFormat[User] = CourierFormats.recordTemplateFormats[User]
 
-  def get(id: Int) = Nap.get { context =>
-    OkIfPresent(id, userStore.get(id))
+  def get(id: Int) = Nap.get.async { context =>
+    userClient.findUsers(UserService.FindUsersRequest(userIds = List(UserService.UserId(id))))
+      .map(_.users.headOption.map(UserConversions.protoToCourier).map(_._2))
+      .map(OkIfPresent(id, _))
   }
 
-  def multiGet(ids: Set[Int]) = Nap.multiGet { context =>
-    Ok(userStore.all()
-      .filter(user => ids.contains(user._1))
-      .map { case (id, user) => Keyed(id, user) }.toList)
+  def multiGet(ids: Set[Int]) = Nap.multiGet.async { context =>
+    find(UserService.FindUsersRequest(userIds = ids.toList.map(UserService.UserId(_))))
   }
 
-  def getAll() = Nap.getAll { context =>
-    Ok(userStore.all().map { case (id, user) => Keyed(id, user) }.toList)
+  def getAll() = Nap.getAll.async { context =>
+    find(UserService.FindUsersRequest())
   }
 
   def create() = Nap
     .jsonBody[User]
-    .create { context =>
+    .create
+    .async { context =>
       val user = context.body
-      val id = userStore.create(user)
-
-      // Could return Ok(Keyed(id, None)) if we want to return 201 Created,
-      // with an empty body. Prefer returning the updated body, however.
-      Ok(Keyed(id, Some(user)))
+      userClient
+        .createUser(UserConversions.courierToProto(user))
+        .map(id => Ok(Keyed(id.userId, Some(user))))
     }
 
-  def email(email: String) = Nap.finder { context =>
-    Ok(userStore.all()
-      .filter(_._2.email == email)
-      .map { case (id, user) => Keyed(id, user) }.toList)
+  def email(email: String) = Nap.finder.async { context =>
+    find(UserService.FindUsersRequest(emails = List(email)))
   }
 
-}
-
-
-trait UserStore {
-  def get(id: Int): Option[User]
-  def create(user: User): Int
-  def all(): Map[Int, User]
-}
-
-@Singleton
-class UserStoreImpl extends UserStore {
-  @volatile
-  var userStore = Map.empty[Int, User]
-  val nextId = new AtomicInteger(0)
-
-  def get(id: Int) = userStore.get(id)
-
-  def create(user: User): Int = {
-    val id = nextId.incrementAndGet()
-    userStore = userStore + (id -> user)
-    id
+  private[this] def find(request: UserService.FindUsersRequest) = {
+    userClient
+      .findUsers(request)
+      .map(_.users.map(UserConversions.protoToCourier).map(Keyed.tupled))
+      .map(Ok(_))
   }
-
-  def all() = userStore
 
 }
 
