@@ -101,6 +101,7 @@ trait UserStore {
   def get(id: Int): Option[User]
   def create(user: User): Int
   def all(): Map[Int, User]
+  def byEmail(email: String): Map[Int, User]
 }
 
 @Singleton
@@ -115,6 +116,10 @@ class UserStoreImpl extends UserStore {
     val id = nextId.incrementAndGet()
     userStore = userStore + (id -> user)
     id
+  }
+
+  def byEmail(email: String): Map[Int, User] = userStore.filter {
+    case (_, user) => user.email == email
   }
 
   def all() = userStore
