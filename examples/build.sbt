@@ -13,11 +13,10 @@ libraryDependencies ++= Seq(
   "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion
 )
 
-org.coursera.courier.sbt.CourierPlugin.courierSettings
-
 sourceDirectories in (Compile, TwirlKeys.compileTemplates) := (unmanagedSourceDirectories in Compile).value
 
 PB.targets in Compile := Seq(
-  scalapb.gen() -> (sourceManaged in Compile).value
+  scalapb.gen() -> (sourceManaged in Compile).value / "proto"
 )
-//PB.protoSources in Compile += (baseDirectory in LocalRootProject).value / "src/main/protobuf"
+
+org.coursera.courier.sbt.CourierPlugin.courierSettings

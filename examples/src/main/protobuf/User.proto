@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package org.example.coursera.proto;
+
+service UserService {
+    rpc findUsers (FindUsersRequest) returns (FindUsersResponse);
+    rpc CreateUser (CreateUserRequest) returns (UserRecord);
+}
+
+message CreateUserRequest {
+    Auth auth = 1;
+    UserData user = 2;
+}
+
+message UserData {
+    string name = 1;
+    string email = 2;
+    // Note: proto3 doesn't allow null-valued fields, but folks hack this using a oneof wrapper.
+    // While this has some nice formal properties (e.g. there is an `Option` accessor in generated
+    // scala code), it is quite verbose, and for trivial cases, I'm not sure it's better than
+    // interpreting the default value (empty string in this case) as `None`. For discussion, see:
+    // https://stackoverflow.com/questions/33204321/upgrading-protobuf-from-version-2-to-3-incompatible-with-protobuf-default-valu
+    oneof selfDescription_present {
+        string selfDescription = 3;
+    }
+}
+
+message UserRecord {
+    uint32 id = 1;
+    UserData user = 2;
+}
+
+message FindUsersResponse {
+    repeated UserRecord users = 1;
+}
+
+message Auth {
+    uint32 requester = 1;
+    bool isSuperuser = 2;
+}
+
+message FindUsersRequest {
+    Auth auth = 1;
+    repeated uint32 userIds = 2;
+    repeated string emails = 3;
+}
