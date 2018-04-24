@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package org.coursera.example.protos;
-
-message Requestor {
-    int32 userId = 1;
-    bool superuser = 2;
-}
