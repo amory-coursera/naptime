@@ -19,7 +19,7 @@ class CourseServiceImpl @Inject()(courseStore: CourseStore)
 
   override def findCourses(request: FindCoursesRequest) =
     Future.successful {
-      val courses = courseStore
+      val filteredCourses = courseStore
         .all()
         .filter {
           case (id, course) =>
@@ -30,19 +30,18 @@ class CourseServiceImpl @Inject()(courseStore: CourseStore)
                 .intersect(course.instructorIds)
                 .nonEmpty)
         }
+        .toList.sortBy(_._1)
 
       val coursesAfterNext = request.paging.start
-        .map(start => courses.dropWhile { case (id, _) => id != start })
-        .getOrElse(courses)
+        .map(start => filteredCourses.dropWhile { case (id, _) => id != start })
+        .getOrElse(filteredCourses)
 
       val coursesSubset = coursesAfterNext.take(request.paging.limit)
+      val next = coursesAfterNext.drop(request.paging.limit).headOption.map(_._1)
 
-      val next =
-        coursesAfterNext.drop(request.paging.limit).headOption.map(_._1)
-
-      CourseService.KeyedCourses(courses = coursesSubset.toList.map {
+      CourseService.KeyedCourses(courses = coursesSubset.map {
         case (id, course) => CourseConversions.courierToProto(id, course)
-      }, ResponsePagination(next = next, total = Some(courses.size)))
+      }, ResponsePagination(next = next, total = Some(filteredCourses.size)))
     }
 
 }

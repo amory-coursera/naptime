@@ -4,20 +4,24 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 import akka.stream.Materializer
+import conversions.PartnerConversions
 import org.coursera.example.Partner
+import org.coursera.naptime.Errors
 import org.coursera.naptime.Fields
 import org.coursera.naptime.MultiGetReverseRelation
 import org.coursera.naptime.Ok
 import org.coursera.naptime.ResourceName
 import org.coursera.naptime.model.Keyed
 import org.coursera.naptime.resources.CourierCollectionResource
-import stores.PartnerStore
+import org.coursera.protobuf.PartnerService
+import org.coursera.protobuf.ids.PartnerId
 
 import scala.concurrent.ExecutionContext
 
 @Singleton
 class PartnersResource @Inject() (
-    partnerStore: PartnerStore)(implicit ec: ExecutionContext, mat: Materializer)
+    partnerClient: PartnerService.PartnerServiceGrpc.PartnerServiceStub)(
+    implicit ec: ExecutionContext, mat: Materializer)
   extends CourierCollectionResource[String, Partner] {
 
   override def resourceName = "partners"
@@ -31,18 +35,27 @@ class PartnersResource @Inject() (
         resourceName = ResourceName("courses", 1),
         ids = "$courseIds"))
 
-  def get(id: String) = Nap.get { context =>
-    OkIfPresent(id, partnerStore.get(id))
+  def get(id: String) = Nap.get.async { context =>
+    find(partnerIds = Some(Set(id)))
+      .map(_.headOption.getOrElse(throw Errors.NotFound()))
+      .map(Ok(_))
   }
 
-  def multiGet(ids: Set[String]) = Nap.multiGet { context =>
-    Ok(partnerStore.all()
-      .filter(partner => ids.contains(partner._1))
-      .map { case (id, partner) => Keyed(id, partner) }.toList)
+  def multiGet(ids: Set[String]) = Nap.multiGet.async { context =>
+    find(partnerIds = Some(ids)).map(Ok(_))
   }
 
-  def getAll() = Nap.getAll { context =>
-    Ok(partnerStore.all().map { case (id, partner) => Keyed(id, partner) }.toList)
+  def getAll() = Nap.getAll.async { context =>
+    find().map(Ok(_))
+  }
+
+  private[this] def find(
+      partnerIds: Option[Set[String]] = None) = {
+    val request = PartnerService.FindPartnersRequest(
+      partnerIds = partnerIds.map(_.map(PartnerId(_)).toList).getOrElse(List.empty))
+    partnerClient
+      .findPartners(request)
+      .map(_.partners.map(PartnerConversions.protoToCourier).map(Keyed.tupled))
   }
 
 }

@@ -7,16 +7,17 @@ import akka.stream.Materializer
 import conversions.CourseConversions
 import conversions.PagingConversions
 import org.coursera.example.Course
+import org.coursera.naptime.Errors
 import org.coursera.naptime.Fields
 import org.coursera.naptime.GetReverseRelation
 import org.coursera.naptime.MultiGetReverseRelation
 import org.coursera.naptime.Ok
+import org.coursera.naptime.RequestPagination
 import org.coursera.naptime.ResourceName
 import org.coursera.naptime.model.Keyed
 import org.coursera.naptime.resources.CourierCollectionResource
 import org.coursera.protobuf.CourseService.CourseServiceGrpc.CourseServiceStub
 import org.coursera.protobuf.CourseService
-import org.coursera.protobuf.CourseService.FindCoursesRequest
 import org.coursera.protobuf.ids.CourseId
 import org.coursera.protobuf.ids.InstructorId
 
@@ -50,39 +51,46 @@ class CoursesResource @Inject() (
           description = "Instructor whose name and signature appears on the degree certificate."))
 
   def get(id: String = "v1-123") = Nap.get.async { context =>
-    courseClient
-      .findCourses(FindCoursesRequest(
-        courseIds = List(CourseId(id)),
-        paging = PagingConversions.naptimeToProto(context.paging)))
-      .map(_.courses.headOption.map(_.course).map(CourseConversions.protoToCourier))
-      .map(OkIfPresent(id, _))
+    find(courseIds = Some(Set(id)), paging = context.paging).map {
+      case (response, _) => response.headOption.getOrElse(throw Errors.NotFound())
+    }.map(Ok(_))
   }
 
   def multiGet(ids: Set[String], types: Set[String] = Set("course", "specialization")) = Nap
     .multiGet.async { context =>
-    find(CourseService.FindCoursesRequest(
-      courseIds = ids.toList.map(CourseId(_)),
-      paging = PagingConversions.naptimeToProto(context.paging)))
+    find(courseIds = Some(ids), paging = context.paging).map {
+      case (response, pagination) => Ok(response).withPagination(pagination)
+    }
   }
 
   def getAll() = Nap.getAll.async { context =>
-    find(CourseService.FindCoursesRequest(
-      paging = PagingConversions.naptimeToProto(context.paging)))
+    find(paging = context.paging).map {
+      case (response, pagination) => Ok(response).withPagination(pagination)
+    }
   }
 
   def byInstructor(instructorId: Int) = Nap.finder.async { context =>
-    find(CourseService.FindCoursesRequest(
-      instructorIds = List(InstructorId(instructorId)),
-      paging = PagingConversions.naptimeToProto(context.paging)))
+    find(instructorIds = Some(Set(instructorId)), paging = context.paging).map {
+      case (response, pagination) => Ok(response).withPagination(pagination)
+    }
   }
 
-  private[this] def find(request: CourseService.FindCoursesRequest) = {
+  private[this] def find(
+      courseIds: Option[Set[String]] = None,
+      instructorIds: Option[Set[Int]] = None,
+      paging: RequestPagination) = {
+
+    val request = CourseService.FindCoursesRequest(
+      courseIds = courseIds.map(_.toList.map(CourseId(_))).getOrElse(List.empty),
+      instructorIds = instructorIds.map(_.toList.map(InstructorId(_))).getOrElse(List.empty),
+      paging = PagingConversions.naptimeToProto(paging))
+
     courseClient
       .findCourses(request)
       .map {
         case CourseService.KeyedCourses(courses, paging) =>
-          Ok(courses.map(CourseConversions.protoToCourier).map(Keyed.tupled))
-            .withPagination(PagingConversions.protoToNaptime(paging))
+          courses.map(CourseConversions.protoToCourier).map(Keyed.tupled) ->
+            PagingConversions.protoToNaptime(paging)
       }
   }
 

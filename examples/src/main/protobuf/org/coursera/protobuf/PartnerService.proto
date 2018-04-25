@@ -3,9 +3,26 @@ syntax = "proto2";
 package org.coursera.protobuf;
 import "org/coursera/protobuf/ids.proto";
 
+service PartnerService {
+    rpc findPartners (FindPartnersRequest) returns (KeyedPartners);
+}
+
 message Partner {
     repeated CourseId course_ids = 1;
     repeated InstructorId instructor_ids = 2;
     required string name = 3;
     required string homepage = 4;
+}
+
+message KeyedPartner {
+    required PartnerId id = 1;
+    required Partner partner = 2;
+}
+
+message KeyedPartners {
+    repeated KeyedPartner partners = 1;
+}
+
+message FindPartnersRequest {
+    repeated PartnerId partner_ids = 1;
 }

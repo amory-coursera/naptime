@@ -9,6 +9,7 @@ import org.coursera.naptime.model.KeyFormat
 import org.coursera.naptime.model.Keyed
 import org.coursera.naptime.Ok
 import org.coursera.example.User
+import org.coursera.naptime.Errors
 import org.coursera.naptime.courier.CourierFormats
 import org.coursera.naptime.resources.TopLevelCollectionResource
 import org.coursera.protobuf.ids.UserId
@@ -66,17 +67,17 @@ class UsersResource @Inject() (
   override implicit def resourceFormat: OFormat[User] = CourierFormats.recordTemplateFormats[User]
 
   def get(id: Int) = Nap.get.async { context =>
-    userClient.findUsers(UserService.FindUsersRequest(userIds = List(UserId(id))))
-      .map(_.users.headOption.map(UserConversions.protoToCourier).map(_._2))
-      .map(OkIfPresent(id, _))
+    find(userIds = Some(Set(id)))
+      .map(_.headOption.getOrElse(throw Errors.NotFound()))
+      .map(Ok(_))
   }
 
   def multiGet(ids: Set[Int]) = Nap.multiGet.async { context =>
-    find(UserService.FindUsersRequest(userIds = ids.toList.map(UserId(_))))
+    find(userIds = Some(ids)).map(Ok(_))
   }
 
   def getAll() = Nap.getAll.async { context =>
-    find(UserService.FindUsersRequest())
+    find().map(Ok(_))
   }
 
   def create() = Nap
@@ -90,14 +91,18 @@ class UsersResource @Inject() (
     }
 
   def email(email: String) = Nap.finder.async { context =>
-    find(UserService.FindUsersRequest(emails = List(email)))
+    find(userEmails = Some(Set(email))).map(Ok(_))
   }
 
-  private[this] def find(request: UserService.FindUsersRequest) = {
+  private[this] def find(
+      userIds: Option[Set[Int]] = None,
+      userEmails: Option[Set[String]] = None) = {
+    val request = UserService.FindUsersRequest(
+      userIds = userIds.map(_.map(UserId(_)).toList).getOrElse(List.empty),
+      emails = userEmails.map(_.toList).getOrElse(List.empty))
     userClient
       .findUsers(request)
       .map(_.users.map(UserConversions.protoToCourier).map(Keyed.tupled))
-      .map(Ok(_))
   }
 
 }
