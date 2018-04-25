@@ -4,6 +4,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 import akka.stream.Materializer
+import conversions.CourseConversions
+import conversions.PagingConversions
 import org.coursera.example.Course
 import org.coursera.naptime.Fields
 import org.coursera.naptime.GetReverseRelation
@@ -12,13 +14,17 @@ import org.coursera.naptime.Ok
 import org.coursera.naptime.ResourceName
 import org.coursera.naptime.model.Keyed
 import org.coursera.naptime.resources.CourierCollectionResource
-import stores.CourseStore
+import org.coursera.protobuf.CourseService.CourseServiceGrpc.CourseServiceStub
+import org.coursera.protobuf.CourseService
+import org.coursera.protobuf.CourseService.FindCoursesRequest
+import org.coursera.protobuf.ids.CourseId
+import org.coursera.protobuf.ids.InstructorId
 
 import scala.concurrent.ExecutionContext
 
 @Singleton
 class CoursesResource @Inject() (
-    courseStore: CourseStore)(implicit ec: ExecutionContext, mat: Materializer)
+    courseClient: CourseServiceStub)(implicit ec: ExecutionContext, mat: Materializer)
   extends CourierCollectionResource[String, Course] {
 
   override def resourceName = "courses"
@@ -43,36 +49,41 @@ class CoursesResource @Inject() (
           ids = "${courseMetadata/degree/degreeInstructorIds}",
           description = "Instructor whose name and signature appears on the degree certificate."))
 
-  def get(id: String = "v1-123") = Nap.get { context =>
-    OkIfPresent(id, courseStore.get(id))
+  def get(id: String = "v1-123") = Nap.get.async { context =>
+    courseClient
+      .findCourses(FindCoursesRequest(
+        courseIds = List(CourseId(id)),
+        paging = PagingConversions.naptimeToProto(context.paging)))
+      .map(_.courses.headOption.map(_.course).map(CourseConversions.protoToCourier))
+      .map(OkIfPresent(id, _))
   }
 
-  def multiGet(ids: Set[String], types: Set[String] = Set("course", "specialization")) = Nap.multiGet { context =>
-    Ok(courseStore.all()
-      .filter(course => ids.contains(course._1))
-      .map { case (id, course) => Keyed(id, course) }.toList)
+  def multiGet(ids: Set[String], types: Set[String] = Set("course", "specialization")) = Nap
+    .multiGet.async { context =>
+    find(CourseService.FindCoursesRequest(
+      courseIds = ids.toList.map(CourseId(_)),
+      paging = PagingConversions.naptimeToProto(context.paging)))
   }
 
-  def getAll() = Nap.getAll { context =>
-
-    val courses = courseStore.all().toList.map { case (id, course) => Keyed(id, course) }
-    val coursesAfterNext = context.paging.start
-      .map(s => courses.dropWhile(_.key != s))
-      .getOrElse(courses)
-
-    val coursesSubset = coursesAfterNext.take(context.paging.limit)
-
-    val next = coursesAfterNext.drop(context.paging.limit).headOption.map(_.key)
-
-    Ok(coursesSubset)
-      .withPagination(next, Some(courses.size.toLong))
+  def getAll() = Nap.getAll.async { context =>
+    find(CourseService.FindCoursesRequest(
+      paging = PagingConversions.naptimeToProto(context.paging)))
   }
 
-  def byInstructor(instructorId: String) = Nap.finder { context =>
-    val courses = courseStore.all()
-      .filter(course => course._2.instructorIds.map(_.toString).contains(instructorId))
-    Ok(courses.toList.map { case (id, course) => Keyed(id, course) })
-      .withPagination(next = "testNext")
+  def byInstructor(instructorId: Int) = Nap.finder.async { context =>
+    find(CourseService.FindCoursesRequest(
+      instructorIds = List(InstructorId(instructorId)),
+      paging = PagingConversions.naptimeToProto(context.paging)))
+  }
+
+  private[this] def find(request: CourseService.FindCoursesRequest) = {
+    courseClient
+      .findCourses(request)
+      .map {
+        case CourseService.KeyedCourses(courses, paging) =>
+          Ok(courses.map(CourseConversions.protoToCourier).map(Keyed.tupled))
+            .withPagination(PagingConversions.protoToNaptime(paging))
+      }
   }
 
 }

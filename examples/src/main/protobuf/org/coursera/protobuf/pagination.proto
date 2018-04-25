@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package org.coursera.protobuf;
+
+message RequestPagination {
+    optional string start = 1;
+    required int32 limit = 2;
+}
+
+message ResponsePagination {
+    optional string next = 1;
+    optional int64 total = 2;
+}

@@ -2,6 +2,11 @@ syntax = "proto2";
 
 package org.coursera.protobuf;
 import "org/coursera/protobuf/ids.proto";
+import "org/coursera/protobuf/pagination.proto";
+
+service CourseService {
+    rpc findCourses (FindCoursesRequest) returns (KeyedCourses);
+}
 
 message Course {
     repeated InstructorId instructor_ids = 1;
@@ -16,6 +21,16 @@ message Course {
     }
 }
 
+message KeyedCourse {
+    required CourseId course_id = 1;
+    required Course course = 2;
+}
+
+message KeyedCourses {
+    repeated KeyedCourse courses = 1;
+    required ResponsePagination paging = 2;
+}
+
 message CertificateCourseMetadata {
     repeated InstructorId certificate_instructor_ids = 1;
 }
@@ -23,4 +38,10 @@ message CertificateCourseMetadata {
 message DegreeCourseMetadata {
     required string degreeCertificateName = 1;
     repeated InstructorId degree_instructor_ids = 2;
+}
+
+message FindCoursesRequest {
+    repeated CourseId course_ids = 1;
+    repeated InstructorId instructor_ids = 2;
+    required RequestPagination paging = 3;
 }
