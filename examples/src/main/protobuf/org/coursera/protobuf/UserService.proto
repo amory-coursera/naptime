@@ -1,14 +1,11 @@
 syntax = "proto2";
 
 package org.coursera.protobuf;
+import "org/coursera/protobuf/ids.proto";
 
 service UserService {
     rpc findUsers (FindUsersRequest) returns (KeyedUsers);
     rpc createUser (User) returns (UserId);
-}
-
-message UserId {
-    required int32 user_id = 1;
 }
 
 message User {

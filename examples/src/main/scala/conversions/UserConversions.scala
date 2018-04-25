@@ -2,11 +2,12 @@ package conversions
 
 import org.coursera.example.User
 import org.coursera.protobuf.UserService
+import org.coursera.protobuf.ids.UserId
 
 object UserConversions {
 
   def courierToProto(id: Int, user: User): UserService.KeyedUser =
-    UserService.KeyedUser(UserService.UserId(id), courierToProto(user))
+    UserService.KeyedUser(UserId(id), courierToProto(user))
 
   def courierToProto(user: User): UserService.User =
     UserService.User(name = user.name,

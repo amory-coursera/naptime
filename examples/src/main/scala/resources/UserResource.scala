@@ -11,6 +11,7 @@ import org.coursera.naptime.Ok
 import org.coursera.example.User
 import org.coursera.naptime.courier.CourierFormats
 import org.coursera.naptime.resources.TopLevelCollectionResource
+import org.coursera.protobuf.ids.UserId
 import org.coursera.protobuf.UserService
 import org.coursera.protobuf.UserService.UserServiceGrpc.UserServiceStub
 import play.api.libs.json.OFormat
@@ -65,13 +66,13 @@ class UsersResource @Inject() (
   override implicit def resourceFormat: OFormat[User] = CourierFormats.recordTemplateFormats[User]
 
   def get(id: Int) = Nap.get.async { context =>
-    userClient.findUsers(UserService.FindUsersRequest(userIds = List(UserService.UserId(id))))
+    userClient.findUsers(UserService.FindUsersRequest(userIds = List(UserId(id))))
       .map(_.users.headOption.map(UserConversions.protoToCourier).map(_._2))
       .map(OkIfPresent(id, _))
   }
 
   def multiGet(ids: Set[Int]) = Nap.multiGet.async { context =>
-    find(UserService.FindUsersRequest(userIds = ids.toList.map(UserService.UserId(_))))
+    find(UserService.FindUsersRequest(userIds = ids.toList.map(UserId(_))))
   }
 
   def getAll() = Nap.getAll.async { context =>

@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+package org.coursera.protobuf;
+
+message UserId {
+    required int32 user_id = 1;
+}
+
+message PartnerId {
+    required string id = 1;
+}
+
+message InstructorId {
+    required int32 id = 1;
+}
+
+message CourseId {
+    required string id = 1;
+}

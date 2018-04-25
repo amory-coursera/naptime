@@ -1,0 +1,26 @@
+syntax = "proto2";
+
+package org.coursera.protobuf;
+import "org/coursera/protobuf/ids.proto";
+
+message Course {
+    repeated InstructorId instructor_ids = 1;
+    required PartnerId partner_id = 2;
+    required string slug = 3;
+    required string name = 4;
+    optional string description = 5;
+    required bytes extra_data = 6;
+    oneof course_metadata {
+        CertificateCourseMetadata certificate = 7;
+        DegreeCourseMetadata degree = 8;
+    }
+}
+
+message CertificateCourseMetadata {
+    repeated InstructorId certificate_instructor_ids = 1;
+}
+
+message DegreeCourseMetadata {
+    required string degreeCertificateName = 1;
+    repeated InstructorId degree_instructor_ids = 2;
+}

@@ -1,0 +1,10 @@
+syntax = "proto2";
+
+package org.coursera.protobuf;
+import "org/coursera/protobuf/ids.proto";
+
+message Instructor {
+    required PartnerId partner_id = 1;
+    required string name = 2;
+    required string photo_url = 3;
+}

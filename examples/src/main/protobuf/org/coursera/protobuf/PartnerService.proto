@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+package org.coursera.protobuf;
+import "org/coursera/protobuf/ids.proto";
+
+message Partner {
+    repeated CourseId course_ids = 1;
+    repeated InstructorId instructor_ids = 2;
+    required string name = 3;
+    required string homepage = 4;
+}
