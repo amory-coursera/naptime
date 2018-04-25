@@ -10,13 +10,10 @@ import org.coursera.naptime.ari.graphql.controllers.filters.ComplexityFilterConf
 import org.coursera.naptime.ari.graphql.controllers.filters.FilterList
 import org.coursera.naptime.ari.graphql.controllers.middleware.GraphQLMetricsCollector
 import org.coursera.naptime.ari.graphql.controllers.middleware.LoggingMetricsCollector
-import resources.UserStore
-import resources.UserStoreImpl
 import resources.UsersResource
 import resources.CoursesResource
 import resources.InstructorsResource
 import resources.PartnersResource
-
 
 class ResourceModule extends NaptimeModule {
   override def configure(): Unit = {
@@ -24,7 +21,6 @@ class ResourceModule extends NaptimeModule {
     bindResource[CoursesResource]
     bindResource[InstructorsResource]
     bindResource[PartnersResource]
-    bind[UserStore].to[UserStoreImpl]
     bind[FetcherApi].to[LocalFetcher]
     bind[GraphQLMetricsCollector].to[LoggingMetricsCollector]
     bind[SchemaProvider].to[LocalSchemaProvider]

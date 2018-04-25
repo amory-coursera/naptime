@@ -106,8 +106,3 @@ class UsersResource @Inject() (
   }
 
 }
-
-class UserBanManager {
-  @volatile
-  var bannedUsers = Set.empty[Int]
-}

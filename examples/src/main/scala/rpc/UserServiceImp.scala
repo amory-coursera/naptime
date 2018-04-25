@@ -7,7 +7,7 @@ import conversions.UserConversions
 import org.coursera.protobuf.ids.UserId
 import org.coursera.protobuf.UserService
 import org.coursera.protobuf.UserService.UserServiceGrpc
-import resources.UserStore
+import stores.UserStore
 
 import scala.concurrent.Future
 
